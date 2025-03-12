@@ -1,24 +1,23 @@
-import $ from 'jquery';
 import func from './core/func';
 import lists from './core/lists';
 import dom from './core/dom';
 
 export default class Context {
   /**
-   * @param {jQuery} $note
+   * @param {HTMLElement} note
    * @param {Object} options
    */
-  constructor($note, options) {
-    this.$note = $note;
+  constructor(note, options) {
+    this.note = note;
 
     this.memos = {};
     this.modules = {};
     this.layoutInfo = {};
-    this.options = $.extend(true, {}, options);
+    this.options = Object.assign({}, options);
 
     // init ui with options
-    $.summernote.ui = $.summernote.ui_template(this.options);
-    this.ui = $.summernote.ui;
+    window.summernote.ui = window.summernote.ui_template(this.options);
+    this.ui = window.summernote.ui;
 
     this.initialize();
   }
@@ -27,9 +26,9 @@ export default class Context {
    * create layout and initialize modules and other resources
    */
   initialize() {
-    this.layoutInfo = this.ui.createLayout(this.$note);
+    this.layoutInfo = this.ui.createLayout(this.note);
     this._initialize();
-    this.$note.hide();
+    this.note.style.display = 'none';
     return this;
   }
 
@@ -38,12 +37,12 @@ export default class Context {
    */
   destroy() {
     this._destroy();
-    this.$note.removeData('summernote');
-    this.ui.removeLayout(this.$note, this.layoutInfo);
+    this.note.removeAttribute('data-summernote');
+    this.ui.removeLayout(this.note, this.layoutInfo);
   }
 
   /**
-   * destory modules and other resources and initialize it again
+   * destroy modules and other resources and initialize it again
    */
   reset() {
     const disabled = this.isDisabled();
@@ -58,17 +57,17 @@ export default class Context {
 
   _initialize() {
     // set own id
-    this.options.id = func.uniqueId($.now());
+    this.options.id = func.uniqueId(Date.now());
     // set default container for tooltips, popovers, and dialogs
     this.options.container = this.options.container || this.layoutInfo.editor;
 
     // add optional buttons
-    const buttons = $.extend({}, this.options.buttons);
+    const buttons = Object.assign({}, this.options.buttons);
     Object.keys(buttons).forEach((key) => {
       this.memo('button.' + key, buttons[key]);
     });
 
-    const modules = $.extend({}, this.options.modules, $.summernote.plugins || {});
+    const modules = Object.assign({}, this.options.modules, window.summernote.plugins || {});
 
     // add and initialize modules
     Object.keys(modules).forEach((key) => {
@@ -100,35 +99,35 @@ export default class Context {
 
     if (html === undefined) {
       this.invoke('codeview.sync');
-      return isActivated ? this.layoutInfo.codable.val() : this.layoutInfo.editable.html();
+      return isActivated ? this.layoutInfo.codable.value : this.layoutInfo.editable.innerHTML;
     } else {
       if (isActivated) {
         this.invoke('codeview.sync', html);
       } else {
-        this.layoutInfo.editable.html(html);
+        this.layoutInfo.editable.innerHTML = html;
       }
-      this.$note.val(html);
+      this.note.value = html;
       this.triggerEvent('change', html, this.layoutInfo.editable);
     }
   }
 
   isDisabled() {
-    return this.layoutInfo.editable.attr('contenteditable') === 'false';
+    return this.layoutInfo.editable.getAttribute('contenteditable') === 'false';
   }
 
   enable() {
-    this.layoutInfo.editable.attr('contenteditable', true);
+    this.layoutInfo.editable.setAttribute('contenteditable', true);
     this.invoke('toolbar.activate', true);
     this.triggerEvent('disable', false);
     this.options.editing = true;
   }
 
   disable() {
-    // close codeview if codeview is opend
+    // close codeview if codeview is opened
     if (this.invoke('codeview.isActivated')) {
       this.invoke('codeview.deactivate');
     }
-    this.layoutInfo.editable.attr('contenteditable', false);
+    this.layoutInfo.editable.setAttribute('contenteditable', false);
     this.options.editing = false;
     this.invoke('toolbar.deactivate', true);
 
@@ -141,9 +140,10 @@ export default class Context {
 
     const callback = this.options.callbacks[func.namespaceToCamel(namespace, 'on')];
     if (callback) {
-      callback.apply(this.$note[0], args);
+      callback.apply(this.note, args);
     }
-    this.$note.trigger('summernote.' + namespace, args);
+    const event = new CustomEvent('summernote.' + namespace, { detail: args });
+    this.note.dispatchEvent(event);
   }
 
   initializeModule(key) {
@@ -160,18 +160,18 @@ export default class Context {
 
     // attach events
     if (module.events) {
-      dom.attachEvents(this.$note, module.events);
+      dom.attachEvents(this.note, module.events);
     }
   }
 
-  module(key, ModuleClass, withoutIntialize) {
+  module(key, ModuleClass, withoutInitialize) {
     if (arguments.length === 1) {
       return this.modules[key];
     }
 
     this.modules[key] = new ModuleClass(this);
 
-    if (!withoutIntialize) {
+    if (!withoutInitialize) {
       this.initializeModule(key);
     }
   }
@@ -180,7 +180,7 @@ export default class Context {
     const module = this.modules[key];
     if (module.shouldInitialize()) {
       if (module.events) {
-        dom.detachEvents(this.$note, module.events);
+        dom.detachEvents(this.note, module.events);
       }
 
       if (module.destroy) {
@@ -219,8 +219,8 @@ export default class Context {
   createInvokeHandler(namespace, value) {
     return (event) => {
       event.preventDefault();
-      const $target = $(event.target);
-      this.invoke(namespace, value || $target.closest('[data-value]').data('value'), $target);
+      const target = event.target;
+      this.invoke(namespace, value || target.closest('[data-value]').dataset.value, target);
     };
   }
 

@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
 /**
  * @method readFileAsDataURL
  *
@@ -9,17 +7,16 @@ import $ from 'jquery';
  * @return {Promise} - then: dataUrl
  */
 export function readFileAsDataURL(file) {
-  return $.Deferred((deferred) => {
-    $.extend(new FileReader(), {
-      onload: (event) => {
-        const dataURL = event.target.result;
-        deferred.resolve(dataURL);
-      },
-      onerror: (err) => {
-        deferred.reject(err);
-      },
-    }).readAsDataURL(file);
-  }).promise();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      resolve(event.target.result);
+    };
+    reader.onerror = (err) => {
+      reject(err);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 /**
@@ -31,17 +28,21 @@ export function readFileAsDataURL(file) {
  * @return {Promise} - then: $image
  */
 export function createImage(url) {
-  return $.Deferred((deferred) => {
-    const $img = $('<img>');
+  return new Promise((resolve, reject) => {
+    const img = document.createElement('img');
+    img.style.display = 'none';
 
-    $img.one('load', () => {
-      $img.off('error abort');
-      deferred.resolve($img);
-    }).one('error abort', () => {
-      $img.off('load').detach();
-      deferred.reject($img);
-    }).css({
-      display: 'none',
-    }).appendTo(document.body).attr('src', url);
-  }).promise();
+    img.onload = () => {
+      document.body.removeChild(img);
+      resolve(img);
+    };
+
+    img.onerror = img.onabort = () => {
+      document.body.removeChild(img);
+      reject(img);
+    };
+
+    document.body.appendChild(img);
+    img.src = url;
+  });
 }

@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import '@/js/settings';
 import renderer from '@/js/renderer';
 
@@ -28,7 +27,7 @@ const airEditable = renderer.create([
 
 const buttonGroup = renderer.create('<div class="note-btn-group btn-group">');
 
-const dropdown = renderer.create('<div class="note-dropdown-menu dropdown-menu" role="list">', function($node, options) {
+const dropdown = renderer.create('<div class="note-dropdown-menu dropdown-menu" role="list">', function(node, options) {
   const markup = Array.isArray(options.items) ? options.items.map(function(item) {
     const value = (typeof item === 'string') ? item : (item.value || '');
     const content = options.template ? options.template(item) : item;
@@ -39,10 +38,11 @@ const dropdown = renderer.create('<div class="note-dropdown-menu dropdown-menu" 
     return '<a class="dropdown-item" href="#" ' + (dataValue + dataOption) + ' role="listitem" aria-label="' + value + '">' + content + '</a>';
   }).join('') : options.items;
 
-  $node.html(markup).attr({ 'aria-label': options.title });
+  node.innerHTML = markup;
+  node.setAttribute('aria-label', options.title);
 
   if (options && options.codeviewKeepButton) {
-    $node.addClass('note-codeview-keep');
+    node.classList.add('note-codeview-keep');
   }
 });
 
@@ -50,27 +50,26 @@ const dropdownButtonContents = function(contents) {
   return contents;
 };
 
-const dropdownCheck = renderer.create('<div class="note-dropdown-menu dropdown-menu note-check" role="list">', function($node, options) {
+const dropdownCheck = renderer.create('<div class="note-dropdown-menu dropdown-menu note-check" role="list">', function(node, options) {
   const markup = Array.isArray(options.items) ? options.items.map(function(item) {
     const value = (typeof item === 'string') ? item : (item.value || '');
     const content = options.template ? options.template(item) : item;
     return '<a class="dropdown-item" href="#" data-value="' + value + '" role="listitem" aria-label="' + item + '">' + icon(options.checkClassName) + ' ' + content + '</a>';
   }).join('') : options.items;
-  $node.html(markup).attr({ 'aria-label': options.title });
+  node.innerHTML = markup;
+  node.setAttribute('aria-label', options.title);
 
   if (options && options.codeviewKeepButton) {
-    $node.addClass('note-codeview-keep');
+    node.classList.add('note-codeview-keep');
   }
 });
 
-const dialog = renderer.create('<div class="modal note-modal" aria-hidden="false" tabindex="-1" role="dialog"></div>', function($node, options) {
+const dialog = renderer.create('<div class="modal note-modal" aria-hidden="false" tabindex="-1" role="dialog"></div>', function(node, options) {
   if (options.fade) {
-    $node.addClass('fade');
+    node.classList.add('fade');
   }
-  $node.attr({
-    'aria-label': options.title,
-  });
-  $node.html([
+  node.setAttribute('aria-label', options.title);
+  node.innerHTML = [
     '<div class="modal-dialog">',
       '<div class="modal-content">',
         (options.title ? '<div class="modal-header">' +
@@ -81,7 +80,7 @@ const dialog = renderer.create('<div class="modal note-modal" aria-hidden="false
         (options.footer ? '<div class="modal-footer">' + options.footer + '</div>' : ''),
       '</div>',
     '</div>',
-  ].join(''));
+  ].join('');
 });
 
 const popover = renderer.create([
@@ -89,18 +88,18 @@ const popover = renderer.create([
     '<div class="popover-arrow"></div>',
     '<div class="popover-body note-popover-content note-children-container"></div>',
   '</div>',
-].join(''), function($node, options) {
+].join(''), function(node, options) {
   const direction = typeof options.direction !== 'undefined' ? options.direction : 'bottom';
 
-  $node.attr('data-popper-placement', direction);
+  node.setAttribute('data-popper-placement', direction);
 
   if (options.hideArrow) {
-    $node.find('.popover-arrow').hide();
+    node.querySelector('.popover-arrow').style.display = 'none';
   }
 });
 
-const checkbox = renderer.create('<div class="form-check"></div>', function($node, options) {
-  $node.html([
+const checkbox = renderer.create('<div class="form-check"></div>', function(node, options) {
+  node.innerHTML = [
     '<label class="form-check-label"' + (options.id ? ' for="note-' + options.id + '"' : '') + '>',
       '<input type="checkbox" class="form-check-input"' + (options.id ? ' id="note-' + options.id + '"' : ''),
         (options.checked ? ' checked' : ''),
@@ -108,7 +107,7 @@ const checkbox = renderer.create('<div class="form-check"></div>', function($nod
         ' aria-checked="' + (options.checked ? 'true' : 'false') + '"/>',
       ' ' + (options.text ? options.text : '') +
     '</label>',
-  ].join(''));
+  ].join('');
 });
 
 const icon = function(iconClassName, tagName) {
@@ -139,8 +138,8 @@ const ui = function(editorOptions) {
     checkbox: checkbox,
     options: editorOptions,
 
-    palette: function($node, options) {
-      return renderer.create('<div class="note-color-palette"></div>', function($node, options) {
+    palette: function(node, options) {
+      return renderer.create('<div class="note-color-palette"></div>', function(node, options) {
         const contents = [];
         for (let row = 0, rowSize = options.colors.length; row < rowSize; row++) {
           const eventName = options.eventName;
@@ -162,79 +161,81 @@ const ui = function(editorOptions) {
           }
           contents.push('<div class="note-color-row">' + buttons.join('') + '</div>');
         }
-        $node.html(contents.join(''));
+        node.innerHTML = contents.join('');
 
         if (options.tooltip) {
-          var tooltipOptions = {
+          const tooltipOptions = {
             container: options.container || editorOptions.container,
             trigger: 'hover',
             placement: 'bottom',
           };
 
-          $node.tooltip({
-            selector: '.note-color-btn',
-            ...tooltipOptions,
+          const tooltipElements = node.querySelectorAll('.note-color-btn');
+          tooltipElements.forEach((tooltipElement) => {
+            tooltipElement.setAttribute('title', tooltipElement.getAttribute('aria-label'));
+            tooltipElement.setAttribute('data-bs-toggle', 'tooltip');
+            new bootstrap.Tooltip(tooltipElement, tooltipOptions);
           });
         }
-      })($node, options);
+      })(node, options);
     },
 
-    button: function($node, options) {
-      return renderer.create('<button type="button" class="note-btn btn btn-outline-secondary btn-sm" tabindex="-1">', function($node, options) {
+    button: function(node, options) {
+      return renderer.create('<button type="button" class="note-btn btn btn-outline-secondary btn-sm" tabindex="-1">', function(node, options) {
         if (options && options.data && options.data.toggle === 'dropdown') {
-          $node.removeAttr('data-toggle');
-          $node.attr('data-bs-toggle', 'dropdown');
+          node.removeAttribute('data-toggle');
+          node.setAttribute('data-bs-toggle', 'dropdown');
           if (options && options.tooltip) {
-            $node.attr({
-              title: options.tooltip,
-              'aria-label': options.tooltip,
-            });
+            node.setAttribute('title', options.tooltip);
+            node.setAttribute('aria-label', options.tooltip);
           }
         } else if (options && options.tooltip) {
-          $node.attr({
-            title: options.tooltip,
-            'aria-label': options.tooltip,
-          }).tooltip({
+          node.setAttribute('title', options.tooltip);
+          node.setAttribute('aria-label', options.tooltip);
+          new bootstrap.Tooltip(node, {
             container: options.container || editorOptions.container,
             trigger: 'hover',
             placement: 'bottom',
-          }).on('click', (e) => {
-            $(e.currentTarget).tooltip('hide');
+          });
+          node.addEventListener('click', () => {
+            bootstrap.Tooltip.getInstance(node).hide();
           });
         }
         if (options && options.codeviewButton) {
-          $node.addClass('note-codeview-keep');
+          node.classList.add('note-codeview-keep');
         }
-      })($node, options);
+      })(node, options);
     },
 
-    toggleBtn: function($btn, isEnable) {
-      $btn.toggleClass('disabled', !isEnable);
-      $btn.attr('disabled', !isEnable);
+    toggleBtn: function(btn, isEnable) {
+      btn.classList.toggle('disabled', !isEnable);
+      btn.disabled = !isEnable;
     },
 
-    toggleBtnActive: function($btn, isActive) {
-      $btn.toggleClass('active', isActive);
+    toggleBtnActive: function(btn, isActive) {
+      btn.classList.toggle('active', isActive);
     },
 
-    onDialogShown: function($dialog, handler) {
-      $dialog.one('shown.bs.modal', handler);
+    onDialogShown: function(dialog, handler) {
+      dialog.addEventListener('shown.bs.modal', handler, { once: true });
     },
 
-    onDialogHidden: function($dialog, handler) {
-      $dialog.one('hidden.bs.modal', handler);
+    onDialogHidden: function(dialog, handler) {
+      dialog.addEventListener('hidden.bs.modal', handler, { once: true });
     },
 
-    showDialog: function($dialog) {
-      $dialog.modal('show');
+    showDialog: function(dialog) {
+      const modal = new bootstrap.Modal(dialog);
+      modal.show();
     },
 
-    hideDialog: function($dialog) {
-      $dialog.modal('hide');
+    hideDialog: function(dialog) {
+      const modal = bootstrap.Modal.getInstance(dialog);
+      modal.hide();
     },
 
-    createLayout: function($note) {
-      const $editor = (editorOptions.airMode ? airEditor([
+    createLayout: function(note) {
+      const editorElement = (editorOptions.airMode ? airEditor([
         editingArea([
           codable(),
           airEditable(),
@@ -258,34 +259,36 @@ const ui = function(editorOptions) {
         ])
       )).render();
 
-      $editor.insertAfter($note);
+      note.insertAdjacentElement('afterend', editorElement);
 
       return {
-        note: $note,
-        editor: $editor,
-        toolbar: $editor.find('.note-toolbar'),
-        editingArea: $editor.find('.note-editing-area'),
-        editable: $editor.find('.note-editable'),
-        codable: $editor.find('.note-codable'),
-        statusbar: $editor.find('.note-statusbar'),
+        note: note,
+        editor: editorElement,
+        toolbar: editorElement.querySelector('.note-toolbar'),
+        editingArea: editorElement.querySelector('.note-editing-area'),
+        editable: editorElement.querySelector('.note-editable'),
+        codable: editorElement.querySelector('.note-codable'),
+        statusbar: editorElement.querySelector('.note-statusbar'),
       };
     },
 
-    removeLayout: function($note, layoutInfo) {
-      $note.html(layoutInfo.editable.html());
+    removeLayout: function(note, layoutInfo) {
+      note.innerHTML = layoutInfo.editable.innerHTML;
       layoutInfo.editor.remove();
-      $note.show();
+      note.style.display = '';
     },
   };
 };
 
-$.summernote = $.extend($.summernote, {
+window.summernote = Object.assign(window.summernote || {}, {
   ui_template: ui,
   interface: 'bs5',
 });
 
-$.summernote.options.styleTags = [
-  'p',
-  { title: 'Blockquote', tag: 'blockquote', className: 'blockquote', value: 'blockquote' },
-  'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-];
+
+// @TODO a decommenter
+// window.summernote.options.styleTags = [
+//   'p',
+//   { title: 'Blockquote', tag: 'blockquote', className: 'blockquote', value: 'blockquote' },
+//   'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+// ];

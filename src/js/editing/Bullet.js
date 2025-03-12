@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import lists from '../core/lists';
 import func from '../core/func';
 import dom from '../core/dom';
@@ -28,21 +27,19 @@ export default class Bullet {
     const paras = rng.nodes(dom.isPara, { includeAncestor: true });
     const clustereds = lists.clusterBy(paras, func.peq2('parentNode'));
 
-    $.each(clustereds, (idx, paras) => {
+    clustereds.forEach((paras) => {
       const head = lists.head(paras);
       if (dom.isLi(head)) {
         const previousList = this.findList(head.previousSibling);
         if (previousList) {
-          paras.map((para) => previousList.appendChild(para));
+          paras.forEach((para) => previousList.appendChild(para));
         } else {
           this.wrapList(paras, head.parentNode.nodeName);
-          paras.map((para) => para.parentNode).map((para) => this.appendToPrevious(para));
+          paras.map((para) => para.parentNode).forEach((para) => this.appendToPrevious(para));
         }
       } else {
-        $.each(paras, (idx, para) => {
-          $(para).css('marginLeft', (idx, val) => {
-            return (parseInt(val, 10) || 0) + 25;
-          });
+        paras.forEach((para) => {
+          para.style.marginLeft = `${(parseInt(para.style.marginLeft, 10) || 0) + 25}px`;
         });
       }
     });
@@ -59,16 +56,14 @@ export default class Bullet {
     const paras = rng.nodes(dom.isPara, { includeAncestor: true });
     const clustereds = lists.clusterBy(paras, func.peq2('parentNode'));
 
-    $.each(clustereds, (idx, paras) => {
+    clustereds.forEach((paras) => {
       const head = lists.head(paras);
       if (dom.isLi(head)) {
         this.releaseList([paras]);
       } else {
-        $.each(paras, (idx, para) => {
-          $(para).css('marginLeft', (idx, val) => {
-            val = parseInt(val, 10) || 0;
-            return val > 25 ? val - 25 : '';
-          });
+        paras.forEach((para) => {
+          const val = parseInt(para.style.marginLeft, 10) || 0;
+          para.style.marginLeft = val > 25 ? `${val - 25}px` : '';
         });
       }
     });
@@ -91,7 +86,7 @@ export default class Bullet {
     // paragraph to list
     if (lists.find(paras, dom.isPurePara)) {
       let wrappedParas = [];
-      $.each(clustereds, (idx, paras) => {
+      clustereds.forEach((paras) => {
         wrappedParas = wrappedParas.concat(this.wrapList(paras, listName));
       });
       paras = wrappedParas;
@@ -102,11 +97,11 @@ export default class Bullet {
           includeAncestor: true,
         })
         .filter((listNode) => {
-          return !$.nodeName(listNode, listName);
+          return listNode.nodeName !== listName;
         });
 
       if (diffLists.length) {
-        $.each(diffLists, (idx, listNode) => {
+        diffLists.forEach((listNode) => {
           dom.replace(listNode, listName);
         });
       } else {
@@ -157,7 +152,7 @@ export default class Bullet {
   releaseList(clustereds, isEscapseToBody) {
     let releasedParas = [];
 
-    $.each(clustereds, (idx, paras) => {
+    clustereds.forEach((paras) => {
       const head = lists.head(paras);
       const last = lists.last(paras);
 
@@ -165,7 +160,7 @@ export default class Bullet {
       const parentItem = headList.parentNode;
 
       if (headList.parentNode.nodeName === 'LI') {
-        paras.map((para) => {
+        paras.forEach((para) => {
           const newList = this.findNextSiblings(para);
 
           if (parentItem.nextSibling) {
@@ -224,15 +219,15 @@ export default class Bullet {
           });
         }
 
-        $.each(lists.from(paras).reverse(), (idx, para) => {
+        lists.from(paras).reverse().forEach((para) => {
           dom.insertAfter(para, headList);
         });
 
         // remove empty lists
         const rootLists = lists.compact([headList, middleList, lastList]);
-        $.each(rootLists, (idx, rootList) => {
+        rootLists.forEach((rootList) => {
           const listNodes = [rootList].concat(dom.listDescendant(rootList, dom.isList));
-          $.each(listNodes.reverse(), (idx, listNode) => {
+          listNodes.reverse().forEach((listNode) => {
             if (!dom.nodeLength(listNode)) {
               dom.remove(listNode, true);
             }
@@ -268,7 +263,7 @@ export default class Bullet {
    * @return {Array[]}
    */
   findList(node) {
-    return node ? lists.find(node.children, (child) => ['OL', 'UL'].indexOf(child.nodeName) > -1) : null;
+    return node ? lists.find(node.children, (child) => ['OL', 'UL'].includes(child.nodeName)) : null;
   }
 
   /**

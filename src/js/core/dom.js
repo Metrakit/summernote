@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import func from './func';
 import lists from './lists';
 import env from './env';
@@ -15,7 +14,7 @@ const ZERO_WIDTH_NBSP_CHAR = '\ufeff';
  * @return {Boolean}
  */
 function isEditable(node) {
-  return node && $(node).hasClass('note-editable');
+  return node && node.classList.contains('note-editable');
 }
 
 /**
@@ -27,7 +26,7 @@ function isEditable(node) {
  * @return {Boolean}
  */
 function isControlSizing(node) {
-  return node && $(node).hasClass('note-control-sizing');
+  return node && node.classList.contains('note-control-sizing');
 }
 
 /**
@@ -389,7 +388,7 @@ function listDescendant(node, pred) {
  */
 function wrap(node, wrapperName) {
   const parent = node.parentNode;
-  const wrapper = $('<' + wrapperName + '>')[0];
+  const wrapper = document.createElement(wrapperName);
 
   parent.insertBefore(wrapper, node);
   wrapper.appendChild(node);
@@ -421,7 +420,7 @@ function insertAfter(node, preceding) {
  * @param {Collection} aChild
  */
 function appendChildNodes(node, aChild, isSkipPaddingBlankHTML) {
-  $.each(aChild, function(idx, child) {
+  aChild.forEach(function(child) {
     // special case: appending a pure UL/OL to a LI element creates inaccessible LI element
     // e.g. press enter in last LI which has UL/OL-subelements
     // Therefore, if current node is LI element with no child nodes (text-node) and appending a list, add a br before
@@ -1056,11 +1055,11 @@ function replace(node, nodeName) {
 const isTextarea = makePredByNodeName('TEXTAREA');
 
 /**
- * @param {jQuery} $node
+ * @param {HTMLElement} node
  * @param {Boolean} [stripLinebreaks] - default: false
  */
-function value($node, stripLinebreaks) {
-  const val = isTextarea($node[0]) ? $node.val() : $node.html();
+function value(node, stripLinebreaks) {
+  const val = isTextarea(node) ? node.value : node.innerHTML;
   if (stripLinebreaks) {
     return val.replace(/[\n\r]/g, '');
   }
@@ -1072,8 +1071,6 @@ function value($node, stripLinebreaks) {
  *
  * get the HTML contents of node
  *
- * @param {jQuery} $node
- * @param {Boolean} [isNewlineOnBlock]
  */
 function html($node, isNewlineOnBlock) {
   let markup = value($node);
@@ -1095,25 +1092,25 @@ function html($node, isNewlineOnBlock) {
 }
 
 function posFromPlaceholder(placeholder) {
-  const $placeholder = $(placeholder);
-  const pos = $placeholder.offset();
-  const height = $placeholder.outerHeight(true); // include margin
+  const rect = placeholder.getBoundingClientRect();
+  const scrollTop = window.scrollY || document.documentElement.scrollTop;
+  const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
 
   return {
-    left: pos.left,
-    top: pos.top + height,
+    left: rect.left + scrollLeft,
+    top: rect.top + scrollTop + placeholder.offsetHeight,
   };
 }
 
-function attachEvents($node, events) {
+function attachEvents(node, events) {
   Object.keys(events).forEach(function(key) {
-    $node.on(key, events[key]);
+    node.addEventListener(key, events[key]);
   });
 }
 
-function detachEvents($node, events) {
+function detachEvents(node, events) {
   Object.keys(events).forEach(function(key) {
-    $node.off(key, events[key]);
+    node.removeEventListener(key, events[key]);
   });
 }
 

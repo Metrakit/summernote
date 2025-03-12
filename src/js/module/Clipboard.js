@@ -2,11 +2,11 @@ export default class Clipboard {
   constructor(context) {
     this.context = context;
     this.options = context.options;
-    this.$editable = context.layoutInfo.editable;
+    this.editable = context.layoutInfo.editable;
   }
 
   initialize() {
-    this.$editable.on('paste', this.pasteByEvent.bind(this));
+    this.editable.addEventListener('paste', this.pasteByEvent.bind(this));
   }
 
   /**
@@ -15,11 +15,10 @@ export default class Clipboard {
    * @param {Event} event
    */
   pasteByEvent(event) {
-
     if (this.context.isDisabled()) {
       return;
     }
-    const clipboardData = event.originalEvent.clipboardData;
+    const clipboardData = event.clipboardData;
 
     if (clipboardData && clipboardData.items && clipboardData.items.length) {
       const clipboardFiles = clipboardData.files;

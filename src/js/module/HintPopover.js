@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import func from '../core/func';
 import lists from '../core/lists';
 import dom from '../core/dom';
@@ -11,7 +10,7 @@ export default class HintPopover {
   constructor(context) {
     this.context = context;
 
-    this.ui = $.summernote.ui;
+    this.ui = context.ui;
     this.$editable = context.layoutInfo.editable;
     this.options = context.options;
     this.hint = this.options.hint || [];
@@ -20,7 +19,7 @@ export default class HintPopover {
 
     this.events = {
       'summernote.keyup': (we, event) => {
-        if (!event.isDefaultPrevented()) {
+        if (!event.defaultPrevented) {
           this.handleKeyup(event);
         }
       },
@@ -44,17 +43,20 @@ export default class HintPopover {
       className: 'note-hint-popover',
       hideArrow: true,
       direction: '',
-    }).render().appendTo(this.options.container);
+    }).render();
+    this.options.container.appendChild(this.$popover);
 
-    this.$popover.hide();
-    this.$content = this.$popover.find('.popover-content,.note-popover-content');
-    this.$content.on('click', '.note-hint-item', (event) => {
-      this.$content.find('.active').removeClass('active');
-      $(event.currentTarget).addClass('active');
-      this.replace();
+    this.$popover.style.display = 'none';
+    this.$content = this.$popover.querySelector('.popover-content,.note-popover-content');
+    this.$content.addEventListener('click', (event) => {
+      if (event.target.classList.contains('note-hint-item')) {
+        this.$content.querySelector('.active').classList.remove('active');
+        event.target.classList.add('active');
+        this.replace();
+      }
     });
 
-    this.$popover.on('mousedown', (event) => { event.preventDefault(); });
+    this.$popover.addEventListener('mousedown', (event) => { event.preventDefault(); });
   }
 
   destroy() {
@@ -62,55 +64,53 @@ export default class HintPopover {
   }
 
   selectItem($item) {
-    this.$content.find('.active').removeClass('active');
-    $item.addClass('active');
+    this.$content.querySelector('.active').classList.remove('active');
+    $item.classList.add('active');
 
-    this.$content[0].scrollTop = $item[0].offsetTop - (this.$content.innerHeight() / 2);
+    this.$content.scrollTop = $item.offsetTop - (this.$content.clientHeight / 2);
   }
 
   moveDown() {
-    const $current = this.$content.find('.note-hint-item.active');
-    const $next = $current.next();
+    const $current = this.$content.querySelector('.note-hint-item.active');
+    const $next = $current.nextElementSibling;
 
-    if ($next.length) {
+    if ($next) {
       this.selectItem($next);
     } else {
-      let $nextGroup = $current.parent().next();
+      let $nextGroup = $current.parentElement.nextElementSibling;
 
-      if (!$nextGroup.length) {
-        $nextGroup = this.$content.find('.note-hint-group').first();
+      if (!$nextGroup) {
+        $nextGroup = this.$content.querySelector('.note-hint-group');
       }
 
-      this.selectItem($nextGroup.find('.note-hint-item').first());
+      this.selectItem($nextGroup.querySelector('.note-hint-item'));
     }
   }
 
   moveUp() {
-    const $current = this.$content.find('.note-hint-item.active');
-    const $prev = $current.prev();
+    const $current = this.$content.querySelector('.note-hint-item.active');
+    const $prev = $current.previousElementSibling;
 
-    if ($prev.length) {
+    if ($prev) {
       this.selectItem($prev);
     } else {
-      let $prevGroup = $current.parent().prev();
+      let $prevGroup = $current.parentElement.previousElementSibling;
 
-      if (!$prevGroup.length) {
-        $prevGroup = this.$content.find('.note-hint-group').last();
+      if (!$prevGroup) {
+        $prevGroup = this.$content.querySelector('.note-hint-group:last-child');
       }
 
-      this.selectItem($prevGroup.find('.note-hint-item').last());
+      this.selectItem($prevGroup.querySelector('.note-hint-item:last-child'));
     }
   }
 
   replace() {
-    const $item = this.$content.find('.note-hint-item.active');
+    const $item = this.$content.querySelector('.note-hint-item.active');
 
-    if ($item.length) {
+    if ($item) {
       var node = this.nodeFromItem($item);
-      // If matchingWord length = 0 -> capture OK / open hint / but as mention capture "" (\w*)
       if (this.matchingWord !== null && this.matchingWord.length === 0) {
         this.lastWordRange.so = this.lastWordRange.eo;
-      // Else si > 0 and normal case -> adjust range "before" for correct position of insertion
       } else if (this.matchingWord !== null && this.matchingWord.length > 0 && !this.lastWordRange.isCollapsed()) {
         let rangeCompute = this.lastWordRange.eo - this.lastWordRange.so - this.matchingWord.length;
         if (rangeCompute > 0) {
@@ -121,7 +121,7 @@ export default class HintPopover {
 
       if (this.options.hintSelect === 'next') {
         var blank = document.createTextNode('');
-        $(node).after(blank);
+        node.after(blank);
         range.createFromNodeBefore(blank).select();
       } else {
         range.createFromNodeAfter(node).select();
@@ -130,13 +130,13 @@ export default class HintPopover {
       this.lastWordRange = null;
       this.hide();
       this.context.invoke('editor.focus');
-      this.context.triggerEvent('change', this.$editable.html(), this.$editable);
+      this.context.triggerEvent('change', this.$editable.innerHTML, this.$editable);
     }
   }
 
   nodeFromItem($item) {
-    const hint = this.hints[$item.data('index')];
-    const item = $item.data('item');
+    const hint = this.hints[$item.dataset.index];
+    const item = $item.dataset.item;
     let node = hint.content ? hint.content(item) : item;
     if (typeof node === 'string') {
       node = dom.createText(node);
@@ -146,16 +146,15 @@ export default class HintPopover {
 
   createItemTemplates(hintIdx, items) {
     const hint = this.hints[hintIdx];
-    return items.map((item , idx) => {
-      const $item = $('<div class="note-hint-item"></div>');
-      $item.append(hint.template ? hint.template(item) : item + '');
-      $item.data({
-        'index': hintIdx,
-        'item': item,
-      });
+    return items.map((item, idx) => {
+      const $item = document.createElement('div');
+      $item.className = 'note-hint-item';
+      $item.innerHTML = hint.template ? hint.template(item) : item + '';
+      $item.dataset.index = hintIdx;
+      $item.dataset.item = item;
 
       if (hintIdx === 0 && idx === 0) {
-        $item.addClass('active');
+        $item.classList.add('active');
       }
 
       return $item;
@@ -163,7 +162,7 @@ export default class HintPopover {
   }
 
   handleKeydown(event) {
-    if (!this.$popover.is(':visible')) {
+    if (this.$popover.style.display === 'none') {
       return;
     }
 
@@ -191,11 +190,12 @@ export default class HintPopover {
   }
 
   createGroup(idx, keyword) {
-    const $group = $('<div class="note-hint-group note-hint-group-' + idx + '"></div>');
+    const $group = document.createElement('div');
+    $group.className = `note-hint-group note-hint-group-${idx}`;
     this.searchKeyword(idx, keyword, (items) => {
       items = items || [];
       if (items.length) {
-        $group.html(this.createItemTemplates(idx, items));
+        $group.append(...this.createItemTemplates(idx, items));
         this.show();
       }
     });
@@ -230,35 +230,29 @@ export default class HintPopover {
       }
 
       if (this.hints.length && keyword) {
-        this.$content.empty();
+        this.$content.innerHTML = '';
 
         const bnd = func.rect2bnd(lists.last(wordRange.getClientRects()));
-        const containerOffset = $(this.options.container).offset();
+        const containerOffset = this.options.container.getBoundingClientRect();
         if (bnd) {
           bnd.top -= containerOffset.top;
           bnd.left -= containerOffset.left;
 
-          this.$popover.hide();
+          this.$popover.style.display = 'none';
           this.lastWordRange = wordRange;
           this.hints.forEach((hint, idx) => {
             if (hint.match.test(keyword)) {
               this.createGroup(idx, keyword).appendTo(this.$content);
             }
           });
-          // select first .note-hint-item
-          this.$content.find('.note-hint-item').first().addClass('active');
+          this.$content.querySelector('.note-hint-item').classList.add('active');
 
-          // set position for popover after group is created
           if (this.direction === 'top') {
-            this.$popover.css({
-              left: bnd.left,
-              top: bnd.top - this.$popover.outerHeight() - POPOVER_DIST,
-            });
+            this.$popover.style.left = `${bnd.left}px`;
+            this.$popover.style.top = `${bnd.top - this.$popover.offsetHeight - POPOVER_DIST}px`;
           } else {
-            this.$popover.css({
-              left: bnd.left,
-              top: bnd.top + bnd.height + POPOVER_DIST,
-            });
+            this.$popover.style.left = `${bnd.left}px`;
+            this.$popover.style.top = `${bnd.top + bnd.height + POPOVER_DIST}px`;
           }
         }
       } else {
@@ -268,10 +262,10 @@ export default class HintPopover {
   }
 
   show() {
-    this.$popover.show();
+    this.$popover.style.display = 'block';
   }
 
   hide() {
-    this.$popover.hide();
+    this.$popover.style.display = 'none';
   }
 }

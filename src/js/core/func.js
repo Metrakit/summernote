@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
 /**
  * @class core.func
  *
@@ -88,10 +86,9 @@ function uniqueId(prefix) {
  * @return {Number} bounds.height
  */
 function rect2bnd(rect) {
-  const $document = $(document);
   return {
-    top: rect.top + $document.scrollTop(),
-    left: rect.left + $document.scrollLeft(),
+    top: rect.top + document.documentElement.scrollTop,
+    left: rect.left + document.documentElement.scrollLeft,
     width: rect.right - rect.left,
     height: rect.bottom - rect.top,
   };

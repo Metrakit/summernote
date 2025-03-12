@@ -1,10 +1,9 @@
-import $ from 'jquery';
 import dom from '../core/dom';
 
 export default class Handle {
   constructor(context) {
     this.context = context;
-    this.$document = $(document);
+    this.$document = document;
     this.$editingArea = context.layoutInfo.editingArea;
     this.options = context.options;
     this.lang = this.options.langInfo;
@@ -28,29 +27,28 @@ export default class Handle {
   }
 
   initialize() {
-    this.$handle = $([
-      '<div class="note-handle">',
-        '<div class="note-control-selection">',
-          '<div class="note-control-selection-bg"></div>',
-          '<div class="note-control-holder note-control-nw"></div>',
-          '<div class="note-control-holder note-control-ne"></div>',
-          '<div class="note-control-holder note-control-sw"></div>',
-          '<div class="',
-            (this.options.disableResizeImage ? 'note-control-holder' : 'note-control-sizing'),
-          ' note-control-se"></div>',
-          (this.options.disableResizeImage ? '' : '<div class="note-control-selection-info"></div>'),
-        '</div>',
-      '</div>',
-    ].join('')).prependTo(this.$editingArea);
+    this.$handle = document.createElement('div');
+    this.$handle.className = 'note-handle';
+    this.$handle.innerHTML = `
+      <div class="note-control-selection">
+        <div class="note-control-selection-bg"></div>
+        <div class="note-control-holder note-control-nw"></div>
+        <div class="note-control-holder note-control-ne"></div>
+        <div class="note-control-holder note-control-sw"></div>
+        <div class="${this.options.disableResizeImage ? 'note-control-holder' : 'note-control-sizing'} note-control-se"></div>
+        ${this.options.disableResizeImage ? '' : '<div class="note-control-selection-info"></div>'}
+      </div>
+    `;
+    this.$editingArea.prepend(this.$handle);
 
-    this.$handle.on('mousedown', (event) => {
+    this.$handle.addEventListener('mousedown', (event) => {
       if (dom.isControlSizing(event.target)) {
         event.preventDefault();
         event.stopPropagation();
 
-        const $target = this.$handle.find('.note-control-selection').data('target');
-        const posStart = $target.offset();
-        const scrollTop = this.$document.scrollTop();
+        const $target = this.$handle.querySelector('.note-control-selection').dataset.target;
+        const posStart = $target.getBoundingClientRect();
+        const scrollTop = this.$document.documentElement.scrollTop;
 
         const onMouseMove = (event) => {
           this.context.invoke('editor.resizeTo', {
@@ -58,25 +56,27 @@ export default class Handle {
             y: event.clientY - (posStart.top - scrollTop),
           }, $target, !event.shiftKey);
 
-          this.update($target[0], event);
+          this.update($target, event);
         };
 
-        this.$document
-          .on('mousemove', onMouseMove)
-          .one('mouseup', (e) => {
-            e.preventDefault();
-            this.$document.off('mousemove', onMouseMove);
-            this.context.invoke('editor.afterCommand');
-          });
+        const onMouseUp = (e) => {
+          e.preventDefault();
+          this.$document.removeEventListener('mousemove', onMouseMove);
+          this.$document.removeEventListener('mouseup', onMouseUp);
+          this.context.invoke('editor.afterCommand');
+        };
 
-        if (!$target.data('ratio')) { // original ratio.
-          $target.data('ratio', $target.height() / $target.width());
+        this.$document.addEventListener('mousemove', onMouseMove);
+        this.$document.addEventListener('mouseup', onMouseUp);
+
+        if (!$target.dataset.ratio) { // original ratio.
+          $target.dataset.ratio = $target.offsetHeight / $target.offsetWidth;
         }
       }
     });
 
     // Listen for scrolling on the handle overlay.
-    this.$handle.on('wheel', (event) => {
+    this.$handle.addEventListener('wheel', (event) => {
       event.preventDefault();
       this.update();
     });
@@ -92,29 +92,31 @@ export default class Handle {
     }
 
     const isImage = dom.isImg(target);
-    const $selection = this.$handle.find('.note-control-selection');
+    const $selection = this.$handle.querySelector('.note-control-selection');
 
     this.context.invoke('imagePopover.update', target, event);
 
     if (isImage) {
-      const $image = $(target);
+      const $image = target;
 
-      const areaRect = this.$editingArea[0].getBoundingClientRect();
+      const areaRect = this.$editingArea.getBoundingClientRect();
       const imageRect = target.getBoundingClientRect();
 
-      $selection.css({
-        display: 'block',
-        left: imageRect.left - areaRect.left,
-        top: imageRect.top - areaRect.top,
-        width: imageRect.width,
-        height: imageRect.height,
-      }).data('target', $image); // save current image element.
+      $selection.style.display = 'block';
+      $selection.style.left = `${imageRect.left - areaRect.left}px`;
+      $selection.style.top = `${imageRect.top - areaRect.top}px`;
+      $selection.style.width = `${imageRect.width}px`;
+      $selection.style.height = `${imageRect.height}px`;
+      $selection.dataset.target = $image; // save current image element.
 
       const origImageObj = new Image();
-      origImageObj.src = $image.attr('src');
+      origImageObj.src = $image.src;
 
-      const sizingText = imageRect.width + 'x' + imageRect.height + ' (' + this.lang.image.original + ': ' + origImageObj.width + 'x' + origImageObj.height + ')';
-      $selection.find('.note-control-selection-info').text(sizingText);
+      const sizingText = `${imageRect.width}x${imageRect.height} (${this.lang.image.original}: ${origImageObj.width}x${origImageObj.height})`;
+      const infoElement = $selection.querySelector('.note-control-selection-info');
+      if (infoElement) {
+        infoElement.textContent = sizingText;
+      }
       this.context.invoke('editor.saveTarget', target);
     } else {
       this.hide();
@@ -123,13 +125,10 @@ export default class Handle {
     return isImage;
   }
 
-  /**
-   * hide
-   *
-   * @param {jQuery} $handle
-   */
   hide() {
     this.context.invoke('editor.clearTarget');
-    this.$handle.children().hide();
+    Array.from(this.$handle.children).forEach(child => {
+      child.style.display = 'none';
+    });
   }
 }

@@ -1,46 +1,58 @@
-import $ from 'jquery';
 import env from './core/env';
 import lists from './core/lists';
 import Context from './Context';
 
-$.fn.extend({
-  /**
-   * Summernote API
-   *
-   * @param {Object|String}
-   * @return {this}
-   */
-  summernote: function() {
-    const type = typeof(lists.head(arguments));
-    const isExternalAPICalled = type === 'string';
-    const hasInitOptions = type === 'object';
+class Summernote {
+  constructor(element, options) {
+    this.element = element;
+    this.options = options;
+    this.init();
+  }
 
-    const options = $.extend({}, $.summernote.options, hasInitOptions ? lists.head(arguments) : {});
+  init() {
+    this.options.langInfo = { ...$.summernote.lang['en-US'], ...$.summernote.lang[this.options.lang] };
+    this.options.icons = { ...$.summernote.options.icons, ...this.options.icons };
+    this.options.tooltip = this.options.tooltip === 'auto' ? !env.isSupportTouch : this.options.tooltip;
 
-    // Update options
-    options.langInfo = $.extend(true, {}, $.summernote.lang['en-US'], $.summernote.lang[options.lang]);
-    options.icons = $.extend(true, {}, $.summernote.options.icons, options.icons);
-    options.tooltip = options.tooltip === 'auto' ? !env.isSupportTouch : options.tooltip;
+    const context = new Context(this.element, this.options);
+    this.element.summernoteContext = context;
+    context.triggerEvent('init', context.layoutInfo);
 
-    this.each((idx, note) => {
-      const $note = $(note);
-      if (!$note.data('summernote')) {
-        const context = new Context($note, options);
-        $note.data('summernote', context);
-        $note.data('summernote').triggerEvent('init', context.layoutInfo);
-      }
-    });
-
-    const $note = this.first();
-    if ($note.length) {
-      const context = $note.data('summernote');
-      if (isExternalAPICalled) {
-        return context.invoke.apply(context, lists.from(arguments));
-      } else if (options.focus) {
-        context.invoke('editor.focus');
-      }
+    if (this.options.focus) {
+      context.invoke('editor.focus');
     }
+  }
 
-    return this;
-  },
-});
+  invoke(method, ...args) {
+    const context = this.element.summernoteContext;
+    if (context) {
+      return context.invoke(method, ...args);
+    }
+  }
+}
+
+function summernote(element, ...args) {
+  const type = typeof lists.head(args);
+  const isExternalAPICalled = type === 'string';
+  const hasInitOptions = type === 'object';
+
+  const options = { ...$.summernote.options, ...(hasInitOptions ? lists.head(args) : {}) };
+
+  if (!element.summernoteContext) {
+    new Summernote(element, options);
+  }
+
+  if (isExternalAPICalled) {
+    return element.summernoteContext.invoke(...args);
+  }
+
+  return element;
+}
+
+// test
+window.Summernote = summernote;
+
+// @TODO A decommenter ou pas.
+// // Usage example
+// const element = document.querySelector('#summernote');
+// summernote(element, { focus: true });

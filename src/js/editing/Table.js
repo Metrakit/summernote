@@ -1,3 +1,7 @@
+/**
+ * Fichier trop gros pour replace jquery
+ */
+
 import $ from 'jquery';
 import dom from '../core/dom';
 import range from '../core/range';

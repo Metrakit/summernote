@@ -1,12 +1,11 @@
-import $ from 'jquery';
 export default class Toolbar {
   constructor(context) {
     this.context = context;
 
-    this.$window = $(window);
-    this.$document = $(document);
+    this.$window = window;
+    this.$document = document;
 
-    this.ui = $.summernote.ui;
+    this.ui = context.ui;
     this.$note = context.layoutInfo.note;
     this.$editor = context.layoutInfo.editor;
     this.$toolbar = context.layoutInfo.toolbar;
@@ -26,53 +25,62 @@ export default class Toolbar {
     this.options.toolbar = this.options.toolbar || [];
 
     if (!this.options.toolbar.length) {
-      this.$toolbar.hide();
+      this.$toolbar.style.display = 'none';
     } else {
       this.context.invoke('buttons.build', this.$toolbar, this.options.toolbar);
     }
 
     if (this.options.toolbarContainer) {
-      this.$toolbar.appendTo(this.options.toolbarContainer);
+      this.options.toolbarContainer.appendChild(this.$toolbar);
     }
 
     this.changeContainer(false);
 
-    this.$note.on('summernote.keyup summernote.mouseup summernote.change', () => {
+    this.$note.addEventListener('summernote.keyup', () => {
+      this.context.invoke('buttons.updateCurrentStyle');
+    });
+    this.$note.addEventListener('summernote.mouseup', () => {
+      this.context.invoke('buttons.updateCurrentStyle');
+    });
+    this.$note.addEventListener('summernote.change', () => {
       this.context.invoke('buttons.updateCurrentStyle');
     });
 
     this.context.invoke('buttons.updateCurrentStyle');
     if (this.options.followingToolbar) {
-      this.$window.on('scroll resize', this.followScroll);
+      this.$window.addEventListener('scroll', this.followScroll);
+      this.$window.addEventListener('resize', this.followScroll);
     }
   }
 
   destroy() {
-    this.$toolbar.children().remove();
+    while (this.$toolbar.firstChild) {
+      this.$toolbar.removeChild(this.$toolbar.firstChild);
+    }
 
     if (this.options.followingToolbar) {
-      this.$window.off('scroll resize', this.followScroll);
+      this.$window.removeEventListener('scroll', this.followScroll);
+      this.$window.removeEventListener('resize', this.followScroll);
     }
   }
 
   followScroll() {
-    if (this.$editor.hasClass('fullscreen')) {
+    if (this.$editor.classList.contains('fullscreen')) {
       return false;
     }
 
-    const editorHeight = this.$editor.outerHeight();
-    const editorWidth = this.$editor.width();
-    const toolbarHeight = this.$toolbar.height();
-    const statusbarHeight = this.$statusbar.height();
+    const editorHeight = this.$editor.offsetHeight;
+    const editorWidth = this.$editor.offsetWidth;
+    const toolbarHeight = this.$toolbar.offsetHeight;
+    const statusbarHeight = this.$statusbar.offsetHeight;
 
-    // check if the web app is currently using another static bar
     let otherBarHeight = 0;
     if (this.options.otherStaticBar) {
-      otherBarHeight = $(this.options.otherStaticBar).outerHeight();
+      otherBarHeight = document.querySelector(this.options.otherStaticBar).offsetHeight;
     }
 
-    const currentOffset = this.$document.scrollTop();
-    const editorOffsetTop = this.$editor.offset().top;
+    const currentOffset = this.$document.documentElement.scrollTop || this.$document.body.scrollTop;
+    const editorOffsetTop = this.$editor.getBoundingClientRect().top + currentOffset;
     const editorOffsetBottom = editorOffsetTop + editorHeight;
     const activateOffset = editorOffsetTop - otherBarHeight;
     const deactivateOffsetBottom = editorOffsetBottom - otherBarHeight - toolbarHeight - statusbarHeight;
@@ -80,36 +88,28 @@ export default class Toolbar {
     if (!this.isFollowing &&
       (currentOffset > activateOffset) && (currentOffset < deactivateOffsetBottom - toolbarHeight)) {
       this.isFollowing = true;
-      this.$editable.css({
-        marginTop: this.$toolbar.outerHeight(),
-      });
-      this.$toolbar.css({
-        position: 'fixed',
-        top: otherBarHeight,
-        width: editorWidth,
-        zIndex: 1000,
-      });
+      this.$editable.style.marginTop = `${this.$toolbar.offsetHeight}px`;
+      this.$toolbar.style.position = 'fixed';
+      this.$toolbar.style.top = `${otherBarHeight}px`;
+      this.$toolbar.style.width = `${editorWidth}px`;
+      this.$toolbar.style.zIndex = 1000;
     } else if (this.isFollowing &&
       ((currentOffset < activateOffset) || (currentOffset > deactivateOffsetBottom))) {
       this.isFollowing = false;
-      this.$toolbar.css({
-        position: 'relative',
-        top: 0,
-        width: '100%',
-        zIndex: 'auto',
-      });
-      this.$editable.css({
-        marginTop: '',
-      });
+      this.$toolbar.style.position = 'relative';
+      this.$toolbar.style.top = '0';
+      this.$toolbar.style.width = '100%';
+      this.$toolbar.style.zIndex = 'auto';
+      this.$editable.style.marginTop = '';
     }
   }
 
   changeContainer(isFullscreen) {
     if (isFullscreen) {
-      this.$toolbar.prependTo(this.$editor);
+      this.$editor.insertBefore(this.$toolbar, this.$editor.firstChild);
     } else {
       if (this.options.toolbarContainer) {
-        this.$toolbar.appendTo(this.options.toolbarContainer);
+        this.options.toolbarContainer.appendChild(this.$toolbar);
       }
     }
     if (this.options.followingToolbar) {
@@ -118,13 +118,13 @@ export default class Toolbar {
   }
 
   updateFullscreen(isFullscreen) {
-    this.ui.toggleBtnActive(this.$toolbar.find('.btn-fullscreen'), isFullscreen);
+    this.ui.toggleBtnActive(this.$toolbar.querySelector('.btn-fullscreen'), isFullscreen);
 
     this.changeContainer(isFullscreen);
   }
 
   updateCodeview(isCodeview) {
-    this.ui.toggleBtnActive(this.$toolbar.find('.btn-codeview'), isCodeview);
+    this.ui.toggleBtnActive(this.$toolbar.querySelector('.btn-codeview'), isCodeview);
     if (isCodeview) {
       this.deactivate();
     } else {
@@ -133,18 +133,18 @@ export default class Toolbar {
   }
 
   activate(isIncludeCodeview) {
-    let $btn = this.$toolbar.find('button');
+    let buttons = this.$toolbar.querySelectorAll('button');
     if (!isIncludeCodeview) {
-      $btn = $btn.not('.note-codeview-keep');
+      buttons = Array.from(buttons).filter(btn => !btn.classList.contains('note-codeview-keep'));
     }
-    this.ui.toggleBtn($btn, true);
+    this.ui.toggleBtn(buttons, true);
   }
 
   deactivate(isIncludeCodeview) {
-    let $btn = this.$toolbar.find('button');
+    let buttons = this.$toolbar.querySelectorAll('button');
     if (!isIncludeCodeview) {
-      $btn = $btn.not('.note-codeview-keep');
+      buttons = Array.from(buttons).filter(btn => !btn.classList.contains('note-codeview-keep'));
     }
-    this.ui.toggleBtn($btn, false);
+    this.ui.toggleBtn(buttons, false);
   }
 }

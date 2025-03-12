@@ -1,41 +1,23 @@
-import $ from 'jquery';
 import func from '../core/func';
 import lists from '../core/lists';
 import dom from '../core/dom';
 
 export default class Style {
   /**
-   * @method jQueryCSS
-   *
-   * [workaround] for old jQuery
-   * passing an array of style properties to .css()
-   * will result in an object of property-value pairs.
-   * (compability with version < 1.9)
-   *
-   * @private
-   * @param  {jQuery} $obj
-   * @param  {Array} propertyNames - An array of one or more CSS properties.
-   * @return {Object}
-   */
-  jQueryCSS($obj, propertyNames) {
-    const result = {};
-    $.each(propertyNames, (idx, propertyName) => {
-      result[propertyName] = $obj.css(propertyName);
-    });
-    return result;
-  }
-
-  /**
    * returns style object from node
    *
-   * @param {jQuery} $node
+   * @param {HTMLElement} node
    * @return {Object}
    */
-  fromNode($node) {
+  fromNode(node) {
     const properties = ['font-family', 'font-size', 'text-align', 'list-style-type', 'line-height'];
-    const styleInfo = this.jQueryCSS($node, properties) || {};
+    const styleInfo = {};
 
-    const fontSize = $node[0].style.fontSize || styleInfo['font-size'];
+    properties.forEach(property => {
+      styleInfo[property] = window.getComputedStyle(node)[property];
+    });
+
+    const fontSize = node.style.fontSize || styleInfo['font-size'];
 
     styleInfo['font-size'] = parseInt(fontSize, 10);
     styleInfo['font-size-unit'] = fontSize.match(/[a-z%]+$/);
@@ -50,10 +32,8 @@ export default class Style {
    * @param {Object} styleInfo
    */
   stylePara(rng, styleInfo) {
-    $.each(rng.nodes(dom.isPara, {
-      includeAncestor: true,
-    }), (idx, para) => {
-      $(para).css(styleInfo);
+    rng.nodes(dom.isPara, { includeAncestor: true }).forEach(para => {
+      Object.assign(para.style, styleInfo);
     });
   }
 
@@ -79,9 +59,7 @@ export default class Style {
     }
 
     let pred = dom.makePredByNodeName(nodeName);
-    const nodes = rng.nodes(dom.isText, {
-      fullyContains: true,
-    }).map((text) => {
+    const nodes = rng.nodes(dom.isText, { fullyContains: true }).map(text => {
       return dom.singleChildAncestor(text, pred) || dom.wrap(text, nodeName);
     });
 
@@ -89,16 +67,16 @@ export default class Style {
       if (onlyPartialContains) {
         const nodesInRange = rng.nodes();
         // compose with partial contains predication
-        pred = func.and(pred, (node) => {
+        pred = func.and(pred, node => {
           return lists.contains(nodesInRange, node);
         });
       }
 
-      return nodes.map((node) => {
+      return nodes.map(node => {
         const siblings = dom.withClosestSiblings(node, pred);
         const head = lists.head(siblings);
         const tails = lists.tail(siblings);
-        $.each(tails, (idx, elem) => {
+        tails.forEach(elem => {
           dom.appendChildNodes(head, elem.childNodes);
           dom.remove(elem);
         });
@@ -116,13 +94,13 @@ export default class Style {
    * @return {Object} - object contains style properties.
    */
   current(rng) {
-    const $cont = $(!dom.isElement(rng.sc) ? rng.sc.parentNode : rng.sc);
-    let styleInfo = this.fromNode($cont);
+    const cont = !dom.isElement(rng.sc) ? rng.sc.parentNode : rng.sc;
+    let styleInfo = this.fromNode(cont);
 
     // document.queryCommandState for toggle state
     // [workaround] prevent Firefox nsresult: "0x80004005 (NS_ERROR_FAILURE)"
     try {
-      styleInfo = $.extend(styleInfo, {
+      styleInfo = Object.assign(styleInfo, {
         'font-bold': document.queryCommandState('bold') ? 'bold' : 'normal',
         'font-italic': document.queryCommandState('italic') ? 'italic' : 'normal',
         'font-underline': document.queryCommandState('underline') ? 'underline' : 'normal',

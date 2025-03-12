@@ -68,13 +68,13 @@ export default {
    * @return {Boolean}
    */
   isEdit: (keyCode) => {
-    return lists.contains([
+    return [
       KEY_MAP.BACKSPACE,
       KEY_MAP.TAB,
       KEY_MAP.ENTER,
       KEY_MAP.SPACE,
       KEY_MAP.DELETE,
-    ], keyCode);
+    ].includes(keyCode);
   },
   /**
    * @method isRemove
@@ -83,10 +83,10 @@ export default {
    * @return {Boolean}
    */
   isRemove: (keyCode) => { // LB
-    return lists.contains([
+    return [
       KEY_MAP.BACKSPACE,
       KEY_MAP.DELETE,
-    ], keyCode);
+    ].includes(keyCode);
   },
   /**
    * @method isMove
@@ -95,12 +95,12 @@ export default {
    * @return {Boolean}
    */
   isMove: (keyCode) => {
-    return lists.contains([
+    return [
       KEY_MAP.LEFT,
       KEY_MAP.UP,
       KEY_MAP.RIGHT,
       KEY_MAP.DOWN,
-    ], keyCode);
+    ].includes(keyCode);
   },
   /**
    * @method isNavigation
@@ -109,12 +109,12 @@ export default {
    * @return {Boolean}
    */
   isNavigation: (keyCode) => {
-    return lists.contains([
+    return [
       KEY_MAP.HOME,
       KEY_MAP.END,
       KEY_MAP.PAGEUP,
       KEY_MAP.PAGEDOWN,
-    ], keyCode);
+    ].includes(keyCode);
   },
   /**
    * @property {Object} nameFromCode

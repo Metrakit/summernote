@@ -1,9 +1,8 @@
-import $ from 'jquery';
 const EDITABLE_PADDING = 24;
 
 export default class Statusbar {
   constructor(context) {
-    this.$document = $(document);
+    this.$document = document;
     this.$statusbar = context.layoutInfo.statusbar;
     this.$editable = context.layoutInfo.editable;
     this.$codable = context.layoutInfo.codable;
@@ -16,36 +15,45 @@ export default class Statusbar {
       return;
     }
 
-    this.$statusbar.on('mousedown touchstart', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
+    this.$statusbar.addEventListener('mousedown', this.onMouseDown.bind(this));
+    this.$statusbar.addEventListener('touchstart', this.onMouseDown.bind(this));
+  }
 
-      const editableTop = this.$editable.offset().top - this.$document.scrollTop();
-      const editableCodeTop = this.$codable.offset().top - this.$document.scrollTop();
+  onMouseDown(event) {
+    event.preventDefault();
+    event.stopPropagation();
 
-      const onStatusbarMove = (event) => {
-        let originalEvent = (event.type == 'mousemove') ? event : event.originalEvent.touches[0];
-        let height = originalEvent.clientY - (editableTop + EDITABLE_PADDING);
-        let heightCode = originalEvent.clientY - (editableCodeTop + EDITABLE_PADDING);
+    const editableTop = this.$editable.getBoundingClientRect().top + window.scrollY;
+    const editableCodeTop = this.$codable.getBoundingClientRect().top + window.scrollY;
 
-        height = (this.options.minheight > 0) ? Math.max(height, this.options.minheight) : height;
-        height = (this.options.maxHeight > 0) ? Math.min(height, this.options.maxHeight) : height;
-        heightCode = (this.options.minheight > 0) ? Math.max(heightCode, this.options.minheight) : heightCode;
-        heightCode = (this.options.maxHeight > 0) ? Math.min(heightCode, this.options.maxHeight) : heightCode;
+    const onStatusbarMove = (event) => {
+      const originalEvent = (event.type === 'mousemove') ? event : event.touches[0];
+      let height = originalEvent.clientY - (editableTop + EDITABLE_PADDING);
+      let heightCode = originalEvent.clientY - (editableCodeTop + EDITABLE_PADDING);
 
+      height = (this.options.minheight > 0) ? Math.max(height, this.options.minheight) : height;
+      height = (this.options.maxHeight > 0) ? Math.min(height, this.options.maxHeight) : height;
+      heightCode = (this.options.minheight > 0) ? Math.max(heightCode, this.options.minheight) : heightCode;
+      heightCode = (this.options.maxHeight > 0) ? Math.min(heightCode, this.options.maxHeight) : heightCode;
 
-        this.$editable.height(height);
-        this.$codable.height(heightCode);
-      };
+      this.$editable.style.height = `${height}px`;
+      this.$codable.style.height = `${heightCode}px`;
+    };
 
-      this.$document.on('mousemove touchmove', onStatusbarMove).one('mouseup touchend', () => {
-        this.$document.off('mousemove touchmove', onStatusbarMove);
-      });
-    });
+    const onMouseUp = () => {
+      this.$document.removeEventListener('mousemove', onStatusbarMove);
+      this.$document.removeEventListener('touchmove', onStatusbarMove);
+    };
+
+    this.$document.addEventListener('mousemove', onStatusbarMove);
+    this.$document.addEventListener('touchmove', onStatusbarMove);
+    this.$document.addEventListener('mouseup', onMouseUp, { once: true });
+    this.$document.addEventListener('touchend', onMouseUp, { once: true });
   }
 
   destroy() {
-    this.$statusbar.off();
-    this.$statusbar.addClass('locked');
+    this.$statusbar.removeEventListener('mousedown', this.onMouseDown.bind(this));
+    this.$statusbar.removeEventListener('touchstart', this.onMouseDown.bind(this));
+    this.$statusbar.classList.add('locked');
   }
 }

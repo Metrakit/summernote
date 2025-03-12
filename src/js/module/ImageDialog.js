@@ -1,12 +1,11 @@
-import $ from 'jquery';
 import env from '../core/env';
 import key from '../core/key';
 
 export default class ImageDialog {
   constructor(context) {
     this.context = context;
-    this.ui = $.summernote.ui;
-    this.$body = $(document.body);
+    this.ui = context.ui;
+    this.$body = document.body;
     this.$editor = context.layoutInfo.editor;
     this.options = context.options;
     this.lang = this.options.langInfo;
@@ -51,10 +50,10 @@ export default class ImageDialog {
   }
 
   bindEnterKey($input, $btn) {
-    $input.on('keypress', (event) => {
+    $input.addEventListener('keypress', (event) => {
       if (event.keyCode === key.code.ENTER) {
         event.preventDefault();
-        $btn.trigger('click');
+        $btn.click();
       }
     });
   }
@@ -76,7 +75,7 @@ export default class ImageDialog {
       } else { // array of files
         this.context.invoke('editor.insertImagesOrCallback', data);
       }
-    }).fail(() => {
+    }).catch(() => {
       this.context.invoke('editor.restoreRange');
     });
   }
@@ -84,46 +83,50 @@ export default class ImageDialog {
   /**
    * show image dialog
    *
-   * @param {jQuery} $dialog
+   * @param {HTMLElement} $dialog
    * @return {Promise}
    */
   showImageDialog() {
-    return $.Deferred((deferred) => {
-      const $imageInput = this.$dialog.find('.note-image-input');
-      const $imageUrl = this.$dialog.find('.note-image-url');
-      const $imageBtn = this.$dialog.find('.note-image-btn');
+    return new Promise((resolve, reject) => {
+      const $imageInput = this.$dialog.querySelector('.note-image-input');
+      const $imageUrl = this.$dialog.querySelector('.note-image-url');
+      const $imageBtn = this.$dialog.querySelector('.note-image-btn');
 
       this.ui.onDialogShown(this.$dialog, () => {
         this.context.triggerEvent('dialog.shown');
 
         // Cloning imageInput to clear element.
-        $imageInput.replaceWith($imageInput.clone().on('change', (event) => {
-          deferred.resolve(event.target.files || event.target.value);
-        }).val(''));
+        const newImageInput = $imageInput.cloneNode(true);
+        $imageInput.parentNode.replaceChild(newImageInput, $imageInput);
+        newImageInput.addEventListener('change', (event) => {
+          resolve(event.target.files || event.target.value);
+        });
+        newImageInput.value = '';
 
-        $imageUrl.on('input paste propertychange', () => {
-          this.ui.toggleBtn($imageBtn, $imageUrl.val());
-        }).val('');
+        $imageUrl.addEventListener('input', () => {
+          this.ui.toggleBtn($imageBtn, $imageUrl.value);
+        });
+        $imageUrl.value = '';
 
         if (!env.isSupportTouch) {
-          $imageUrl.trigger('focus');
+          $imageUrl.focus();
         }
 
-        $imageBtn.on('click', (event) => {
+        $imageBtn.addEventListener('click', (event) => {
           event.preventDefault();
-          deferred.resolve($imageUrl.val());
+          resolve($imageUrl.value);
         });
 
         this.bindEnterKey($imageUrl, $imageBtn);
       });
 
       this.ui.onDialogHidden(this.$dialog, () => {
-        $imageInput.off();
-        $imageUrl.off();
-        $imageBtn.off();
+        newImageInput.removeEventListener('change', () => {});
+        $imageUrl.removeEventListener('input', () => {});
+        $imageBtn.removeEventListener('click', () => {});
 
         if (deferred.state() === 'pending') {
-          deferred.reject();
+          reject();
         }
       });
 
